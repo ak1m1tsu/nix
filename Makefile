@@ -2,11 +2,6 @@ lint:
 	golangci-lint run ./...
 
 test: lint
-	go test -coverprofile=c.out -v ./... \
+	go test -coverprofile=c.out -v -race -count=1 ./... \
 	&& go tool cover -html=c.out \
 	&& rm c.out
-
-race: lint
-	go test -coverprofile=rc.out -v ./... \
-	&& go tool cover -html=rc.out \
-	&& rm rc.out
