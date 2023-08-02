@@ -1,12 +1,15 @@
 package jwt
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 )
+
+var ErrInvalidClaims = errors.New("invalid claims")
 
 type Claims struct {
 	Payload interface{}
@@ -76,7 +79,7 @@ func ValidateToken(token string, key []byte) (interface{}, error) {
 
 	claims, ok := parsedToken.Claims.(*Claims)
 	if !ok {
-		return nil, fmt.Errorf("invalid claims")
+		return nil, ErrInvalidClaims
 	}
 
 	return claims.Payload, nil
