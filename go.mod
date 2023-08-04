@@ -9,6 +9,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/uuid v1.3.0
 	github.com/stretchr/testify v1.8.4
+	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 )
 
 require (
