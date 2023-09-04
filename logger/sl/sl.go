@@ -1,4 +1,4 @@
-// Package sl provides utility functions for working with the golang.org/x/exp/slog package.
+// Package sl provides utility functions for working with the log/slog package.
 //
 // Example:
 // Below is an example demonstrating the usage of the sl package:
@@ -7,7 +7,7 @@
 //
 //	import (
 //	    "fmt"
-//	    "golang.org/x/exp/slog"
+//	    "log/slog"
 //	    "github.com/romankravchuk/logger/sl"
 //	)
 //
@@ -24,9 +24,9 @@
 //	}
 package sl
 
-import "golang.org/x/exp/slog"
+import "log/slog"
 
-// Err creates a slog attribute for logging errors with the golang.org/x/exp/slog package.
+// Err creates a slog attribute for logging errors with the log/slog package.
 func Err(err error) slog.Attr {
 	return slog.Attr{
 		Key:   "error",

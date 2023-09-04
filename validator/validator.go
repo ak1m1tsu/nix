@@ -86,3 +86,8 @@ func Validate(v any) error {
 	}
 	return nil
 }
+
+// RegisterRules registers the custom validation rules for the given 'v'
+func RegisterRules(v any, rules map[string]string) {
+	validate.RegisterStructValidationMapRules(rules, v)
+}
