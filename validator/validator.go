@@ -77,7 +77,10 @@ func init() {
 func Validate(v any) error {
 	err := validate.Struct(v)
 	if err != nil {
-		errs := err.(validator.ValidationErrors)
+		errs, ok := err.(validator.ValidationErrors)
+		if !ok {
+			return err
+		}
 		errMsgs := make([]string, len(errs))
 		for i, e := range errs {
 			errMsgs[i] = e.Translate(trans)
