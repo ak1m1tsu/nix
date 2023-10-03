@@ -45,12 +45,6 @@ func Test_ValidateToken(t *testing.T) {
 			key:         pub,
 		},
 		{
-			name:        "invalid key",
-			token:       "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJQYXlsb2FkIjp7IlVzZXJJRCI6MSwiVXNlcm5hbWUiOiJ0ZXN0In0sImV4cCI6NTI5MDk4MDc0OSwibmJmIjoxNjkwOTg0MzQ5LCJpYXQiOjE2OTA5ODQzNDksImp0aSI6IjJhOTFlNDdiLWIwZTYtNDI3MS05NWU3LWY3YjdmYjY4MWJiZiJ9.BiudJ6fSKuZX1Onw48Oki8WA5csUltnPIv7EGZgeHYV1oRumYooM6Bwrn7UNYAL1_JCUP6C8VyFsQE-M2NAeOKauQquaNXmtIPSyQcHkFN2FDj4pqL9V0Ci0XCoxtqcuPN027j9mIEj5JfXL_Yj1-RmYlK-JBQuf4EE5loMMpzQfaDqU77hYFcar-F-8Hhc51bv-sSZ9f3En87nlGPmhtWWr7uREhnAjA9e0SW-HZaqU5tUBqgyLCR5xJxEIbTP-NKZBBk6e2wMjAamendVdx8uDob7Z9zmDWFFczOZIFSuWpXQdChO3-HAJobaqeq-wziSXBDl4Q0cRNQrmNp9wJGi0ZrSjrPOW0P2Qt7zQOtqfux65lEfEEjJM6DpY6O4Njx4XzfMK6bQuwtUOsF8BA1MsBkGVLsRcne874rX8pFpQYJDZwfJB4LjoRQVISaJeSArw8Bt9sQ9InTUDY1wmYlnlj7k4h4F_ylv0J3MqEFRVT0NJYcOvRE6jQU9aM5JToDFW9C4WLMaSUxB6195pMgArqvAVVvI-34gKYBdrxGl2gDTYG05uvdZJnbfsHITpRH2c5x-WAveWCXGY-bchHxlUKyqwXq55cw0e3mt9RE2ivZb_0gC8VgH1VzX48aTIrRMLmpYvdgTEViaKvObzJf5vR1Te-zU38pbUTbqHBhU",
-			expectedErr: jwt.ErrInvalidKey,
-			key:         []byte("invalid key"),
-		},
-		{
 			name:        "invalid claims",
 			token:       "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJQYXlsb2FkIjp7IlVzZXJJRCI6MSwiVXNlcm5hbWUiOiJ0ZXN0In0sIlRlbXAiOiJ0ZW1wIiwiZXhwIjo1MjkwOTgxNzU4LCJuYmYiOjE2OTA5ODUzNTgsImlhdCI6MTY5MDk4NTM1OCwianRpIjoiNDQ0OWRlMmMtMDMwMS00MGE0LWExNGQtZDNiMTcwY2ExNDcyIn0.eO7tX9cCKSOoYEdEHGW5tPdxx4nZckl021s48CseLaVMP1-yTAHdtD0s7c-61oILC0lQnKXWRu75s2BLEcXnRHHhh1QpSUW4NiHWcWmcR4siHgONOBtclv-bI312vtJ5Oj-wcKHCi3odDs4ZsXEyzsaCjhEoJFvogbWSzh1NfCrhaUsy7lQfTQ1JfBDNstY1aYn9_L1-xhd_hSM0XRYeAVRl0h8JSY643o953TGV80k-4ya0GI7dhNwi6D2OlwFol0uSqWgx8pL-HVjB2h3nU9ZSz_TrBVPxxxLoRqP8eFdjnJBy9wAwV9DqEj57PkaYKkGh0mgYisCsy60-23p__NGXF4lj36wcU6EbnORRpXVnC-pRgQausHrNpE-_qEqi5GGzdpMmgSsjCUfIGSbq8GbnVTm0yS1vk2KNzPNILkPM4BRrM01WFrRXhRB1XLBsCqpkg5yodZgdGmnLMOb7zXdrDDCl2YTn6iv32B6IEEsKzrUi6KDHxXnV1d2xN1BTwL1wwyzIYV-D68mr82AulnMFBcbcIrPIgFJnV4Ami5QvhUGEbjvjdaoQMHDkizIMtTwivzjKutxJhPc0wPJQBkDIUJQE1SaVBOcn41XOsVIa82pyPDPLxJm83PmqQ7A1gw3OOivjKjZY3TEXZwvMOL5-UgewVb5afoOVCORlEOM",
 			expectedErr: nil,
@@ -62,7 +56,11 @@ func Test_ValidateToken(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			payload, err := ValidateToken(tc.token, tc.key)
+
+			key, err := jwt.ParseRSAPublicKeyFromPEM(tc.key)
+			require.NoError(t, err)
+
+			payload, err := ValidateToken(tc.token, key)
 
 			assert.IsType(t, tc.expectedErr, err)
 
@@ -94,18 +92,17 @@ func Test_CreateToken(t *testing.T) {
 			},
 			key: pk,
 		},
-		{
-			name:        "invalid key",
-			key:         []byte("invalid key"),
-			expectedErr: jwt.ErrKeyMustBePEMEncoded,
-		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			details, err := CreateToken(tc.payload, time.Hour*999999, tc.key)
+
+			key, err := jwt.ParseRSAPrivateKeyFromPEM(tc.key)
+			require.NoError(t, err)
+
+			details, err := CreateToken(tc.payload, time.Hour*999999, key)
 
 			require.Equal(t, tc.expectedErr, err)
 

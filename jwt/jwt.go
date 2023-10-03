@@ -28,6 +28,7 @@
 package jwt
 
 import (
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"time"
@@ -57,18 +58,13 @@ type Details struct {
 // The function generates a new UUID as the token ID and uses the RS256 signing method for JWTs.
 // The token is signed with the RSA private key, and its expiration time is set according to the ttl value.
 // Returns the token details on success, or an error if any operation fails.
-func CreateToken(payload interface{}, ttl time.Duration, key []byte) (*Details, error) {
+func CreateToken(payload interface{}, ttl time.Duration, key *rsa.PrivateKey) (*Details, error) {
 	now := time.Now().UTC()
 
 	details := &Details{
 		ID:      uuid.New(),
 		Payload: payload,
 		Expires: now.Add(ttl),
-	}
-
-	parsedKey, err := jwt.ParseRSAPrivateKeyFromPEM(key)
-	if err != nil {
-		return nil, err
 	}
 
 	claims := Claims{
@@ -81,7 +77,8 @@ func CreateToken(payload interface{}, ttl time.Duration, key []byte) (*Details, 
 		},
 	}
 
-	details.Token, err = jwt.NewWithClaims(jwt.SigningMethodRS256, &claims).SignedString(parsedKey)
+	var err error
+	details.Token, err = jwt.NewWithClaims(jwt.SigningMethodRS256, &claims).SignedString(key)
 	if err != nil {
 		return nil, err
 	}
@@ -93,12 +90,7 @@ func CreateToken(payload interface{}, ttl time.Duration, key []byte) (*Details, 
 // The function parses the token and verifies its signature using the RSA public key.
 // If the token is valid, it returns the payload stored in the token.
 // If the token is invalid, expired, or tampered with, an error is returned.
-func ValidateToken(token string, key []byte) (interface{}, error) {
-	parsedKey, err := jwt.ParseRSAPublicKeyFromPEM(key)
-	if err != nil {
-		return nil, err
-	}
-
+func ValidateToken(token string, key *rsa.PublicKey) (interface{}, error) {
 	parsedToken, err := jwt.ParseWithClaims(
 		token,
 		&Claims{},
@@ -106,7 +98,7 @@ func ValidateToken(token string, key []byte) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 			}
-			return parsedKey, nil
+			return key, nil
 		},
 	)
 	if err != nil {
