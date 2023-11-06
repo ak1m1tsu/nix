@@ -10,7 +10,7 @@
 //
 //	import (
 //	    "fmt"
-//	    "your-module-path/validator"
+//	    "github.com/romankravchuk/nix/validator"
 //	)
 //
 //	type User struct {
@@ -25,9 +25,10 @@
 //	        Email:    "john.doe@example.com",
 //	        Age:      25,
 //	    }
+//		v := validator.New()
 //
-//	    if err := validator.Validate(user); err != nil {
-//	        fmt.Println("Validation failed:", err)
+//	    if isValid := v.Validate(user); !isValid {
+//	        fmt.Println("Validation failed:", v.Errors())
 //	    } else {
 //	        fmt.Println("Validation successful!")
 //	    }
@@ -36,7 +37,7 @@ package validator
 
 import (
 	"errors"
-	"strings"
+	"sync"
 
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
@@ -44,53 +45,62 @@ import (
 	ent "github.com/go-playground/validator/v10/translations/en"
 )
 
-var (
-	// validate is an instance of the validator.Validate used for validation checks.
-	validate *validator.Validate
+type Validator struct {
+	validator  *validator.Validate
+	translator ut.Translator
 
-	// uni is an instance of the ut.UniversalTranslator used for translation of error messages.
-	uni *ut.UniversalTranslator
+	errs   map[string]string
+	errsMu sync.RWMutex
+}
 
-	// trans is an instance of the ut.Translator used for translation of error messages to English.
-	trans ut.Translator
-)
+func New() *Validator {
+	var (
+		v        = validator.New()
+		entrans  = en.New()
+		trans, _ = ut.New(entrans, entrans).GetTranslator("en")
+	)
 
-// init initializes the package by setting up the validator and translator instances.
-// It registers the default translations for English language.
-func init() {
-	if validate == nil {
-		validate = validator.New()
-	}
-	if uni == nil {
-		en := en.New()
-		uni = ut.New(en, en)
-	}
-	if trans == nil {
-		trans, _ = uni.GetTranslator("en")
-		_ = ent.RegisterDefaultTranslations(validate, trans)
+	_ = ent.RegisterDefaultTranslations(v, trans)
+
+	return &Validator{
+		validator:  v,
+		translator: trans,
+		errs:       make(map[string]string),
 	}
 }
 
-// Validate validates the input 'v' using the validator instance and
-// returns an error if the validation fails. The error message includes all the
-// validation errors separated by commas.
-func Validate(v any) error {
-	err := validate.Struct(v)
+// Validate validates the given 'data' using the validator.
+func (v *Validator) Validate(data interface{}) bool {
+	var (
+		errs validator.ValidationErrors
+		err  = v.validator.Struct(data)
+	)
+
 	if err != nil {
-		errs, ok := err.(validator.ValidationErrors)
-		if !ok {
-			return err
+		if errors.As(err, &errs) {
+			v.errsMu.Lock()
+			defer v.errsMu.Unlock()
+
+			for _, e := range errs {
+				v.errs[e.Field()] = e.Translate(v.translator)
+			}
 		}
-		errMsgs := make([]string, len(errs))
-		for i, e := range errs {
-			errMsgs[i] = e.Translate(trans)
-		}
-		return errors.New(strings.Join(errMsgs, ", "))
+
+		return false
 	}
-	return nil
+
+	return true
 }
 
-// RegisterRules registers the custom validation rules for the given 'v'
-func RegisterRules(v any, rules map[string]string) {
-	validate.RegisterStructValidationMapRules(rules, v)
+// Errors returns the validation errors as a map of field names to error messages.
+func (v *Validator) Errors() map[string]string {
+	v.errsMu.RLock()
+	defer v.errsMu.RUnlock()
+
+	return v.errs
+}
+
+// RegisterRules registers the custom validation rules for the given 'data'
+func (v *Validator) RegisterRules(data any, rules map[string]string) {
+	v.validator.RegisterStructValidationMapRules(rules, data)
 }
